@@ -1,0 +1,9 @@
+# Binaries
+/Binaries/Object/
+
+# Visual Studio files and folder
+.vs/
+**.sln
+**.csproj
+**.csproj.user
+**.csproj.filters
