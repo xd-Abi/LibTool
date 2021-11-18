@@ -19,12 +19,14 @@ namespace LibTool
 
             // Parse the arguments
             bool printHelp = ParseBool(argsList, "help", false);
-            string file = ParseString(argsList, "file=", "");
+            string searchdir = ParseString(argsList, "search-dir=", "");
+            string filextension = ParseString(argsList, "file-ext=", ".libTool");
+
 
             // Checking the arguments
-            if (string.IsNullOrEmpty(file))
+            if (string.IsNullOrEmpty(searchdir))
             {
-                Log.WriteError("File was null or empty. Use --help!");
+                Log.WriteError("Search directory was null or empty. Use --help!");
             }
 
             // Print error if there are any more arguments
@@ -45,7 +47,7 @@ namespace LibTool
             // Start program
             try
             {
-                Start(file);
+                Start(searchdir, filextension);
             }
             catch (Exception e)
             {
@@ -107,22 +109,21 @@ namespace LibTool
             Log.WriteLine("      LibTool [Options]");
             Log.WriteLine();
             Log.WriteLine("   Options:");
-            Log.WriteLine("      file=<PATH>");
+            Log.WriteLine("      search-dir=<PATH>     A directory to search for libTool files");
+            Log.WriteLine("      file-ext=<EXT>        A custom extension. Default: .libTool");
             Log.WriteLine();
         }
     
-        static void Start(string inFile)
+        static void Start(string inSearchDir, string inFileExtension)
         {
-            string rootFile = ProcessPath(inFile, Directory.GetCurrentDirectory());
+            string searchdir = ProcessPath(inSearchDir, Directory.GetCurrentDirectory());
             
-            if (!File.Exists(rootFile))
+            if (!Directory.Exists(searchdir))
             {
-                throw new Exception("File was not found! '" + rootFile + "'");
+                throw new Exception("Search directory was not found! '" + searchdir + "'");
             }
 
-            // TODO: Including files
             List<string> files = new List<string>();
-            files.Add(rootFile);
 
             foreach (string file in files)
             {
@@ -156,9 +157,9 @@ namespace LibTool
             return path;
         }
 
+
         static void ProcessFile(string inFile)
         {
-
         }
     }
 }
