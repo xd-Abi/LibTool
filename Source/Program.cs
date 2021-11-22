@@ -8,10 +8,14 @@ using System.Xml;
 
 namespace LibTool
 {
+    // Static Logger
     static class Log
     {
         static string s_CurrentStatus = "";
 
+        /// <summary>
+        /// Writes a empty line
+        /// </summary>
         public static void WriteLine()
         {
             Console.WriteLine();
@@ -29,6 +33,10 @@ namespace LibTool
             Console.ResetColor();
         }
 
+        /// <summary>
+        /// Overrides the old status 
+        /// </summary>
+        /// <param name="inStatus">The new status as string</param>
         public static void WriteStatus(string inStatus)
         {
             // if the status is larger than the console with, truncate it
@@ -57,6 +65,10 @@ namespace LibTool
             s_CurrentStatus = NewStatus;
         }
 
+        /// <summary>
+        /// Flushes the status and sets the current 
+        /// status to ""
+        /// </summary>
         public static void FlushStatus()
         {
             if (s_CurrentStatus.Length > 0)
@@ -67,17 +79,33 @@ namespace LibTool
         }
     }
 
+    // Config
     static class Config
     {
+        /// <summary>
+        /// Default is always the current directory (Directory.GetCurrentDirectory())
+        /// </summary>
         public static string RootPath { get; set; } = Directory.GetCurrentDirectory();
 
+        /// <summary>
+        /// If set to true all Include commands needs to be realtive
+        /// to RootPath
+        /// </summary>
         public static bool DefaultInRoot { get; set; } = true;
 
+        /// <summary>
+        /// Overrides files if already exists
+        /// </summary>
         public static bool Override { get; set; } = false;
     }
 
+    // Main Program
     class Program
     {
+        /// <summary>
+        /// Main Entry point 
+        /// </summary>
+        /// <param name="inArgs">Command line parameters</param>
         static void Main(string[] inArgs)
         {
             try
@@ -92,6 +120,11 @@ namespace LibTool
             }
         }
 
+        /// <summary>
+        /// Parse all command line parameters and starts 
+        /// the program
+        /// </summary>
+        /// <param name="inArgs">The arguments to parse</param>
         static void Start(string[] inArgs)
         {
             List<string> argsList = new List<string>(inArgs);
@@ -135,7 +168,7 @@ namespace LibTool
             // Printing help message
             if (printHelp)
             {
-
+                PrintHelp();
             }
 
             Log.WriteLine("Checking...");
@@ -144,6 +177,14 @@ namespace LibTool
 
         // Utility functions
 
+        /// <summary>
+        /// This function is only used to parse
+        /// command line parameters.
+        /// </summary>
+        /// <param name="inArgsList">The args list</param>
+        /// <param name="inName">The parameter name</param>
+        /// <param name="inDefaultValue">A defazkt value</param>
+        /// <returns>True if name was found in args list</returns>
         static bool ParseBool(List<string> inArgsList, string inName, bool inDefaultValue = false)
         {
             for (int i = 0; i < inArgsList.Count(); i++)
@@ -158,6 +199,14 @@ namespace LibTool
             return inDefaultValue;
         }
 
+        /// <summary>
+        /// This function is only used to parse
+        /// command line parameters.
+        /// </summary>
+        /// <param name="inArgsList">The args list</param>
+        /// <param name="inName">The parameter name</param>
+        /// <param name="inDefaultValue">A defazkt value</param>
+        /// <returns>A substring from args list</returns>
         static string ParseString(List<string> inArgsList, string inName, string inDefaultValue = "")
         {
             for (int i = 0; i < inArgsList.Count(); i++)
@@ -178,7 +227,7 @@ namespace LibTool
         {
             for (int i = 0; i < inParentNode.ChildNodes.Count; i++)
             {
-                if (ComapreString(inParentNode.ChildNodes[i].Name, inName))
+                if (CompareString(inParentNode.ChildNodes[i].Name, inName))
                 {
                     return inParentNode.ChildNodes[i].InnerText;
                 }
@@ -191,7 +240,7 @@ namespace LibTool
         {
             for (int i = 0; i < inParentNode.ChildNodes.Count; i++)
             {
-                if (ComapreString(inParentNode.ChildNodes[i].Name, inName))
+                if (CompareString(inParentNode.ChildNodes[i].Name, inName))
                 {
                     return ParseBool(inParentNode.ChildNodes[i].InnerText);
                 }
@@ -232,7 +281,7 @@ namespace LibTool
         {
             foreach (XmlAttribute attribute in inNode.Attributes)
             {
-                if (ComapreString(attribute.Name, inName))
+                if (CompareString(attribute.Name, inName))
                 {
                     if (!string.IsNullOrEmpty(attribute.Value))
                     {
@@ -247,7 +296,7 @@ namespace LibTool
         {
             foreach (XmlAttribute attribute in inNode.Attributes)
             {
-                if (ComapreString(attribute.Name, inName))
+                if (CompareString(attribute.Name, inName))
                 {
                     if (!string.IsNullOrEmpty(attribute.Value))
                     {
@@ -259,11 +308,25 @@ namespace LibTool
             return inDefaultValue;
         }
 
-        static bool ComapreString(string inA, string inB)
+        /// <summary>
+        /// Comapres two strings. 
+        /// NOTE: StringComparison.OrdinalIgnoreCase
+        /// </summary>
+        /// <param name="inA">The first string to compare</param>
+        /// <param name="inB">The second string to compare</param>
+        /// <returns></returns>
+        static bool CompareString(string inA, string inB)
         {
             return string.Equals(inA, inB, StringComparison.OrdinalIgnoreCase);
         }
 
+        /// <summary>
+        /// Replaces '/' to system dir separator char
+        /// and combines with a realtive path
+        /// </summary>
+        /// <param name="inPath">A path to process</param>
+        /// <param name="inRelativeDir">A realative path to combine</param>
+        /// <returns></returns>
         static string ProcessPath(string inPath, string inRelativeDir)
         {
             string path = inPath;
@@ -273,8 +336,19 @@ namespace LibTool
             return path;
         }
 
+        /// <summary>
+        /// Searches for files a directory
+        /// </summary>
+        /// <param name="inSearchDir">The search directory</param>
+        /// <param name="inFilter">A filter. (**.xml)</param>
+        /// <returns>A list of paths</returns>
         static List<string> SearchFiles(string inSearchDir, string inFilter)
         {
+            if (!Directory.Exists(inSearchDir))
+            {
+                throw new Exception(string.Format("Directory was not found! '{0}'", inSearchDir));
+            }
+
             List<string> output = new List<string>();
 
             List<string> directories = new List<string>(Directory.GetDirectories(inSearchDir, "*", SearchOption.AllDirectories));
@@ -294,6 +368,18 @@ namespace LibTool
         }
 
         // Core functions
+
+        /// <summary>
+        /// Prints a help message
+        /// </summary>
+        static void PrintHelp()
+        { }
+
+
+        /// <summary>
+        /// Reads libtool files in xml format
+        /// </summary>
+        /// <param name="inFilePath">A file to read</param>
         static void ReadFile(string inFilePath)
         {
             // Check if file exists
@@ -327,6 +413,11 @@ namespace LibTool
             }
         }
 
+        /// <summary>
+        /// Process all nodes called 'Config'
+        /// </summary>
+        /// <param name="inConfigNode">The node to process</param>
+        /// <param name="inFilePath">The xml file path</param>
         static void ProcessConfig(XmlNode inConfigNode, string inFilePath)
         {
             foreach (XmlNode childNode in inConfigNode.ChildNodes)
@@ -375,6 +466,11 @@ namespace LibTool
             }
         }
 
+        /// <summary>
+        /// Process all nodes called 'Include'
+        /// </summary>
+        /// <param name="inIncludeNode">The node to process</param>
+        /// <param name="inFilePath">The xml file path</param>
         static void ProcessInclude(XmlNode inIncludeNode, string inFilePath)
         {
 ;
