@@ -1,6 +1,6 @@
 workspace "LibTool"
     architecture "x86_64"
-    location "../"
+    location "../../"
     targetdir "%{wks.location}/Binaries/%{cfg.configuration}/%{cfg.platform}/"
     objdir "%{wks.location}/Binaries/Object/"
 
