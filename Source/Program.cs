@@ -183,7 +183,7 @@ namespace LibTool
         /// </summary>
         /// <param name="inArgsList">The args list</param>
         /// <param name="inName">The parameter name</param>
-        /// <param name="inDefaultValue">A defazkt value</param>
+        /// <param name="inDefaultValue">A default value</param>
         /// <returns>True if name was found in args list</returns>
         static bool ParseBool(List<string> inArgsList, string inName, bool inDefaultValue = false)
         {
@@ -205,7 +205,7 @@ namespace LibTool
         /// </summary>
         /// <param name="inArgsList">The args list</param>
         /// <param name="inName">The parameter name</param>
-        /// <param name="inDefaultValue">A defazkt value</param>
+        /// <param name="inDefaultValue">A default value</param>
         /// <returns>A substring from args list</returns>
         static string ParseString(List<string> inArgsList, string inName, string inDefaultValue = "")
         {
