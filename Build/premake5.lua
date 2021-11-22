@@ -28,8 +28,9 @@ project "LibTool"
 
     links 
     {
-        "System",         
-        "System.Core",
+		"System",
+        "System.Core", 
+        "System.Xml", 
         "System.IO.Compression", 
         "System.IO.Compression.FileSystem", 
     }

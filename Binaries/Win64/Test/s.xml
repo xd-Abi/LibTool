@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LibTool>
+
+    <Config>
+        <RootPath Create="true">./Test2</RootPath>
+        <Override>TRUE</Override>    
+        <DefaultInRoot>false</DefaultInRoot>
+    </Config>
+    
+
+</LibTool>
