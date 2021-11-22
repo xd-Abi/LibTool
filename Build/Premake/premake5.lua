@@ -19,7 +19,7 @@ project "LibTool"
     kind "ConsoleApp"
     language "C#"
     location "%{wks.location}/Source"
-    icon "%{wks.location}/Source/Resources/Icon.ico"
+    icon "%{wks.location}/Resources/Icon.ico"
 
     files 
     {
