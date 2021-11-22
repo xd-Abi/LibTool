@@ -8,104 +8,15 @@ using System.Xml;
 
 namespace LibTool
 {
-    // Static Logger
-    static class Log
-    {
-        static string s_CurrentStatus = "";
-
-        /// <summary>
-        /// Writes a empty line
-        /// </summary>
-        public static void WriteLine()
-        {
-            Console.WriteLine();
-        }
-
-        public static void WriteLine(string inFormat, params object[] inArgs)
-        {
-            Console.WriteLine(inFormat, inArgs);
-        }
-
-        public static void WriteError(string inFormat, params object[] inArgs)
-        {
-            Console.ForegroundColor = ConsoleColor.Red;
-            Console.WriteLine(inFormat, inArgs);
-            Console.ResetColor();
-        }
-
-        /// <summary>
-        /// Overrides the old status 
-        /// </summary>
-        /// <param name="inStatus">The new status as string</param>
-        public static void WriteStatus(string inStatus)
-        {
-            // if the status is larger than the console with, truncate it
-            string NewStatus = inStatus;
-
-            try
-            {
-                int Width = Console.BufferWidth;
-
-                if (NewStatus.Length >= Width)
-                {
-                    NewStatus = NewStatus.Substring(0, Width - 1);
-                }
-            }
-            catch (Exception)
-            {
-            }
-
-            // Write the new status
-            Console.Write("\r" + NewStatus);
-            if (NewStatus.Length < s_CurrentStatus.Length)
-            {
-                Console.Write(new string(' ', s_CurrentStatus.Length - NewStatus.Length) + "\r" + NewStatus);
-            }
-
-            s_CurrentStatus = NewStatus;
-        }
-
-        /// <summary>
-        /// Flushes the status and sets the current 
-        /// status to ""
-        /// </summary>
-        public static void FlushStatus()
-        {
-            if (s_CurrentStatus.Length > 0)
-            {
-                Console.WriteLine();
-                s_CurrentStatus = "";
-            }
-        }
-    }
-
-    // Config
-    static class Config
-    {
-        /// <summary>
-        /// Default is always the current directory (Directory.GetCurrentDirectory())
-        /// </summary>
-        public static string RootPath { get; set; } = Directory.GetCurrentDirectory();
-
-        /// <summary>
-        /// If set to true all Include commands needs to be realtive
-        /// to RootPath
-        /// </summary>
-        public static bool DefaultInRoot { get; set; } = true;
-
-        /// <summary>
-        /// Overrides files if already exists
-        /// </summary>
-        public static bool Override { get; set; } = false;
-    }
-
-    // Main Program
     class Program
     {
-        /// <summary>
-        /// Main Entry point 
-        /// </summary>
-        /// <param name="inArgs">Command line parameters</param>
+        public class ProgramException : Exception
+        {
+            public ProgramException(string inMessage, params object[] inArgs)
+                : base(string.Format(inMessage, inArgs))
+            { }
+        }
+
         static void Main(string[] inArgs)
         {
             try
@@ -116,15 +27,10 @@ namespace LibTool
             {
                 Log.FlushStatus();
                 Log.WriteError("An Error has occurred:");
-                Log.WriteError(e.Message);
+                Log.WriteError(e.ToString());
             }
         }
 
-        /// <summary>
-        /// Parse all command line parameters and starts 
-        /// the program
-        /// </summary>
-        /// <param name="inArgs">The arguments to parse</param>
         static void Start(string[] inArgs)
         {
             List<string> argsList = new List<string>(inArgs);
@@ -141,419 +47,272 @@ namespace LibTool
             }
 
             // Parse the arguments
-            bool printHelp = ParseBool(argsList, "help", false);
-            string file = ParseString(argsList, "file=", null);
+            bool printHelp = Utils.ParseBool(argsList, "help", false);
+            string file = Utils.ParseString(argsList, "file=", null);
 
-            // Checking the arguments
-            if (string.IsNullOrEmpty(file))
-            {
-                Log.WriteError("File was null or empty. Use {0}help", argsPrefix);
-            }
-            else
-            {
-                // The file will be checked after in ReadFile()
+            // Checking arguments
 
-                file = ProcessPath(file, Directory.GetCurrentDirectory());
-            }
-
-            // Print error if there are any more arguments
-            foreach (string remainingArg in argsList)
-            {
-                Log.WriteError("Invalid command line parameter: {0}", remainingArg);
-                Log.WriteLine();
-
-                printHelp = true;
-            }
-
-            // Printing help message
             if (printHelp)
             {
                 PrintHelp();
+                return;
             }
+
+            // if there are any more arguments, print an error
+            foreach (string remainingArg in argsList)
+            {
+                Log.WriteError("Invalid command line parameter: {0}", remainingArg);
+                Log.WriteError("Use --help.");
+                Log.WriteLine();
+
+                return;
+            }
+
+            if (string.IsNullOrEmpty(file))
+            {
+                throw new ProgramException("File was null or empty! Use --help.");
+            }
+
+            // The file will be checked after in ReadFile().
+            file = Utils.ProcessPath(file, Directory.GetCurrentDirectory());
 
             Log.WriteLine("Checking...");
             ReadFile(file);
         }
 
-        // Utility functions
-
-        /// <summary>
-        /// This function is only used to parse
-        /// command line parameters.
-        /// </summary>
-        /// <param name="inArgsList">The args list</param>
-        /// <param name="inName">The parameter name</param>
-        /// <param name="inDefaultValue">A default value</param>
-        /// <returns>True if name was found in args list</returns>
-        static bool ParseBool(List<string> inArgsList, string inName, bool inDefaultValue = false)
-        {
-            for (int i = 0; i < inArgsList.Count(); i++)
-            {
-                if (string.Compare(inArgsList[i], inName, true) == 0)
-                {
-                    inArgsList.RemoveAt(i);
-                    return true;
-                }
-            }
-
-            return inDefaultValue;
-        }
-
-        /// <summary>
-        /// This function is only used to parse
-        /// command line parameters.
-        /// </summary>
-        /// <param name="inArgsList">The args list</param>
-        /// <param name="inName">The parameter name</param>
-        /// <param name="inDefaultValue">A default value</param>
-        /// <returns>A substring from args list</returns>
-        static string ParseString(List<string> inArgsList, string inName, string inDefaultValue = "")
-        {
-            for (int i = 0; i < inArgsList.Count(); i++)
-            {
-                if (inArgsList[i].StartsWith(inName))
-                {
-                    string output = inArgsList[i].Substring(inName.Length);
-                    inArgsList.RemoveAt(i);
-
-                    return output;
-                }
-            }
-
-            return inDefaultValue;
-        }
-
-        static string ParseString(XmlNode inParentNode, string inName, string inDefaultValue = "")
-        {
-            for (int i = 0; i < inParentNode.ChildNodes.Count; i++)
-            {
-                if (CompareString(inParentNode.ChildNodes[i].Name, inName))
-                {
-                    return inParentNode.ChildNodes[i].InnerText;
-                }
-            }
-
-            return inDefaultValue;
-        }
-
-        static bool ParseBool(XmlNode inParentNode, string inName, bool inDefaultValue = false)
-        {
-            for (int i = 0; i < inParentNode.ChildNodes.Count; i++)
-            {
-                if (CompareString(inParentNode.ChildNodes[i].Name, inName))
-                {
-                    return ParseBool(inParentNode.ChildNodes[i].InnerText);
-                }
-            }
-
-            return inDefaultValue;
-        }
-
-        static bool ParseBool(string inValue)
-        {
-            // Parsing the value manually to avoid bool.Parse() exception
-
-            bool output = false;
-
-            if (string.IsNullOrEmpty(inValue))
-            {
-                throw new Exception("Config: Override was null or empty!");
-            }
-
-            if (string.Equals(inValue, "True", StringComparison.OrdinalIgnoreCase))
-            {
-                output = true;
-            }
-            else if (string.Equals(inValue, "False", StringComparison.OrdinalIgnoreCase))
-            {
-                output = false;
-            }
-            else
-            {
-                // Handling exceptions
-                throw new Exception(string.Format("Config: Override was a invalid value! '{0}'", inValue));
-            }
-
-            return output;
-        }
-
-        static string ParseAttribute(XmlNode inNode, string inName, string inDefaultValue = "")
-        {
-            foreach (XmlAttribute attribute in inNode.Attributes)
-            {
-                if (CompareString(attribute.Name, inName))
-                {
-                    if (!string.IsNullOrEmpty(attribute.Value))
-                    {
-                        return attribute.Value;
-                    }
-                }
-            }
-
-            return inDefaultValue;
-        }
-        static bool ParseAttribute(XmlNode inNode, string inName, bool inDefaultValue)
-        {
-            foreach (XmlAttribute attribute in inNode.Attributes)
-            {
-                if (CompareString(attribute.Name, inName))
-                {
-                    if (!string.IsNullOrEmpty(attribute.Value))
-                    {
-                        return ParseBool(attribute.Value);
-                    }
-                }
-            }
-
-            return inDefaultValue;
-        }
-
-        /// <summary>
-        /// Comapres two strings. 
-        /// NOTE: StringComparison.OrdinalIgnoreCase
-        /// </summary>
-        /// <param name="inA">The first string to compare</param>
-        /// <param name="inB">The second string to compare</param>
-        /// <returns></returns>
-        static bool CompareString(string inA, string inB)
-        {
-            return string.Equals(inA, inB, StringComparison.OrdinalIgnoreCase);
-        }
-
-        /// <summary>
-        /// Replaces '/' to system dir separator char
-        /// and combines with a realtive path
-        /// </summary>
-        /// <param name="inPath">A path to process</param>
-        /// <param name="inRelativeDir">A realative path to combine</param>
-        /// <returns></returns>
-        static string ProcessPath(string inPath, string inRelativeDir)
-        {
-            string path = inPath;
-            path = inPath.Replace('/', Path.DirectorySeparatorChar);
-            path = Path.Combine(inRelativeDir, path);
-
-            return path;
-        }
-
-        /// <summary>
-        /// Searches for files a directory
-        /// </summary>
-        /// <param name="inSearchDir">The search directory</param>
-        /// <param name="inFilter">A filter. (**.xml)</param>
-        /// <returns>A list of paths</returns>
-        static List<string> SearchFiles(string inSearchDir, string inFilter)
-        {
-            if (!Directory.Exists(inSearchDir))
-            {
-                throw new Exception(string.Format("Directory was not found! '{0}'", inSearchDir));
-            }
-
-            List<string> output = new List<string>();
-
-            List<string> directories = new List<string>(Directory.GetDirectories(inSearchDir, "*", SearchOption.AllDirectories));
-            directories.Add(inSearchDir);
-
-            directories.ForEach(delegate (string dir)
-            {
-                List<string> foundfiles = new List<string>(Directory.GetFiles(dir, inFilter));
-
-                foundfiles.ForEach(delegate (string file)
-                {
-                    output.Add(file);
-                });
-            });
-
-            return output;
-        }
-
-        // Core functions
-
-        /// <summary>
-        /// Prints a help message
-        /// </summary>
         static void PrintHelp()
-        { }
+        {
+            // Header
+            Log.WriteLine();
+            Log.SetColor(ConsoleColor.Cyan);
+            Log.WriteLine("====================== LibTool ======================");
+            Log.ResetColor();
 
+            Log.WriteLine();
+            Log.WriteLine(" Description:");
+            Log.WriteLine("    This tool downloads dependencies from the");
+            Log.WriteLine("    internet.");
+            Log.WriteLine();
+            Log.WriteLine(" Usage:");
+            Log.WriteLine("    LibTool [options]");
+            Log.WriteLine();
+            Log.WriteLine(" Options:");
+            Log.WriteLine("    --file=          A xml file to start the program");
+            Log.WriteLine();
 
-        /// <summary>
-        /// Reads libtool files in xml format
-        /// </summary>
-        /// <param name="inFilePath">A file to read</param>
+            // Foot
+            Log.SetColor(ConsoleColor.Cyan);
+            Log.WriteLine("=====================================================");
+            Log.ResetColor();
+            Log.WriteLine();
+        }
+
         static void ReadFile(string inFilePath)
         {
-            // Check if file exists
+            // Check if file exsits
             if (!File.Exists(inFilePath))
             {
-                throw new Exception(string.Format("File was not found! '{0}'", inFilePath));
+                throw new ProgramException("File not found! ({0})", inFilePath);
             }
 
             // Reading xml file
             XmlDocument xmlDocument = new XmlDocument();
             xmlDocument.Load(inFilePath);
 
-            // There must be a node called LibTool, otherwise this file will be ignored!
-            if (xmlDocument.GetElementsByTagName("LibTool").Count == 0)
+            // There must be a node called LibTool otherwise this file will be ignored!
+            foreach (XmlNode rootNode in xmlDocument.GetElementsByTagName("LibTool"))
             {
-                return;
-            }
-
-            foreach (XmlNode rootNodes in xmlDocument.GetElementsByTagName("LibTool"))
-            {
-                foreach (XmlNode node in rootNodes.ChildNodes)
+                foreach (XmlNode childNode in rootNode.ChildNodes)
                 {
-                    switch (node.Name)
+                    string name = childNode.Name;
+
+                    if (Utils.Compare(name, "Config"))
                     {
-                        case "Config": ProcessConfig(node, inFilePath); break;
-                        case "Include": ProcessInclude(node, inFilePath); break;
-                        // Any other node will be ignored!
-                        default: break;
+                        ProcessConfig(childNode, inFilePath);
+                    }
+                    else if (Utils.Compare(name, "Include"))
+                    {
+                        ProcessInclude(childNode, inFilePath);
+                    }
+                    else if (Utils.Compare(name, "Library"))
+                    {
+                        ProcessLibrary(childNode, inFilePath);
+                    }
+                    else
+                    {
+                        Log.WriteWarning("{0}: Unknown node({1})!", Path.GetFileName(inFilePath), name);
                     }
                 }
             }
         }
 
-        /// <summary>
-        /// Process all nodes called 'Config'
-        /// </summary>
-        /// <param name="inConfigNode">The node to process</param>
-        /// <param name="inFilePath">The xml file path</param>
         static void ProcessConfig(XmlNode inConfigNode, string inFilePath)
         {
-            foreach (XmlNode childNode in inConfigNode.ChildNodes)
+            foreach (XmlNode node in inConfigNode.ChildNodes)
             {
-                switch (childNode.Name)
+                if (Utils.Compare(node.Name, "Override"))
                 {
-                    case "Override":
-                        {
-                            Config.Override = ParseBool(childNode.InnerText);
-                        }
-                        break;
+                    if (string.IsNullOrEmpty(node.InnerText))
+                    {
+                        throw new ProgramException("{0}: Override was null or empty! Valid options: 'True', 'False'.", Path.GetFileName(inFilePath));
+                    }
 
-                    case "RootPath":
-                        {
-                            string xmlFileDir = Path.GetDirectoryName(inFilePath);
-                            string path = childNode.InnerText;
-                            bool create = ParseAttribute(childNode, "Create", false);
+                    Config.Override = bool.Parse(node.InnerText);
+                }
+                else if (Utils.Compare(node.Name, "DefaultInRoot"))
+                {
+                    if (string.IsNullOrEmpty(node.InnerText))
+                    {
+                        throw new ProgramException("{0}: DefaultInRoot was null or empty! Valid options: 'True', 'False'.", Path.GetFileName(inFilePath));
+                    }
 
-                            if (string.IsNullOrEmpty(path))
-                            {
-                                throw new Exception("Config: RootPath was null or empty!");
-                            }
+                    Config.DefaultInRoot = bool.Parse(node.InnerText);
+                }
+                else if (Utils.Compare(node.Name, "RelativePath"))
+                {
+                    if (string.IsNullOrEmpty(node.InnerText))
+                    {
+                        throw new ProgramException("{0}: RelativePath was null or empty! Vaild options: 'Root', 'File'.", Path.GetFileName(inFilePath));
+                    }
 
-                            path = ProcessPath(path, xmlFileDir);
+                    if (Utils.Compare(node.InnerText, "Root"))
+                    {
+                        Config.RelativePath = Config.RelativePathOptions.Root;
+                    }
+                    else if (Utils.Compare(node.InnerText, "File"))
+                    {
+                        Config.RelativePath = Config.RelativePathOptions.File;
+                    }
+                    else
+                    {
+                        throw new ProgramException("{0}: Invalid RelativePath! Vaild options: 'Root', 'File'.", Path.GetFileName(inFilePath));
+                    }
+                }
+                else if (Utils.Compare(node.Name, "RootPath"))
+                {
+                    string path = node.InnerText;
 
-                            // Check if path exists
-                            if (!Directory.Exists(path) && !create)
-                            {
-                                throw new Exception("Config: RootPath was not found!");
-                            }
-                            else 
-                            {
-                                Directory.CreateDirectory(path);
-                            }
+                    if (string.IsNullOrEmpty(path))
+                    {
+                        throw new ProgramException("{0}: RootPath was null or empty! Use a relative path!", Path.GetFileName(inFilePath));
+                    }
 
-                            Config.RootPath = path;
-                        }
-                        break;
+                    path = Utils.ProcessPath(path, Path.GetDirectoryName(inFilePath));
 
-                    case "DefaultInRoot":
-                        {
-                            Config.DefaultInRoot = ParseBool(childNode.InnerText);
-                        }
-                        break;
+                    bool create = Utils.ParseAttribute(node, "Create", false);
+
+                    if (!Directory.Exists(path) && !create)
+                    {
+                        throw new ProgramException("{0}: RootPath was not found! ({1})", Path.GetFileName(inFilePath), path);
+                    }
+                    else
+                    {
+                        Directory.CreateDirectory(path);
+                    }
+
+                    Config.RootPath = path;
+                }
+                else
+                {
+                    Log.WriteWarning("{0}: Unknown node({1})!", Path.GetFileName(inFilePath), node.Name);
                 }
             }
         }
 
-        /// <summary>
-        /// Process all nodes called 'Include'
-        /// </summary>
-        /// <param name="inIncludeNode">The node to process</param>
-        /// <param name="inFilePath">The xml file path</param>
         static void ProcessInclude(XmlNode inIncludeNode, string inFilePath)
         {
-;
-            string rootDir = Path.GetDirectoryName(inFilePath);
-
-            // Processing root path
+            foreach (XmlNode node in inIncludeNode.ChildNodes)
             {
-                bool inRoot = ParseAttribute(inIncludeNode, "InRoot", Config.DefaultInRoot);
-
-                if (inRoot)
+                if (Utils.Compare(node.Name, "File"))
                 {
-                    rootDir = Config.RootPath;
-                }
-            }
+                    string path = node.InnerText;
+                    bool inRoot = Utils.ParseAttribute(node, "InRoot", Config.DefaultInRoot);
 
-            // Child nodes
-            foreach (XmlNode childNode in inIncludeNode.ChildNodes)
-            {
-                switch (childNode.Name)
+                    if (string.IsNullOrEmpty(path))
+                    {
+                        throw new ProgramException("{0}: Include-File: File was null or empty!", Path.GetFileName(inFilePath));
+                    }
+
+                    if (inRoot)
+                    {
+                        path = Utils.ProcessPath(path, Config.RootPath);
+                    }
+                    else
+                    {
+                        path = Utils.ProcessPath(path, Path.GetDirectoryName(inFilePath));
+                    }
+
+                    if (!File.Exists(path))
+                    {
+                        throw new ProgramException("{0}: Include-File: File was not found! ({1})", Path.GetFileName(inFilePath), path);
+                    }
+
+                    if (Path.Equals(path, inFilePath))
+                    {
+                        throw new ProgramException("{0}: Include-File: Includes it self!", Path.GetFileName(inFilePath));
+                    }
+
+                    ReadFile(path);
+                }
+                else if (Utils.Compare(node.Name, "Dir"))
                 {
-                    case "File":
+                    string path = Utils.ParseString(node, "Path", "");
+                    string filter = Utils.ParseString(node, "Filter", null);
+                    bool inRoot = Utils.ParseAttribute(node, "InRoot", Config.DefaultInRoot);
+
+                    // Check path
+
+                    if (string.IsNullOrEmpty(path))
+                    {
+                        throw new ProgramException("{0}: Include-Dir: Path was null or empty!", Path.GetFileName(inFilePath));
+                    }
+
+                    if (inRoot)
+                    {
+                        path = Utils.ProcessPath(path, Config.RootPath);
+                    }
+                    else
+                    {
+                        path = Utils.ProcessPath(path, Path.GetDirectoryName(inFilePath));
+                    }
+
+                    if (!Directory.Exists(path))
+                    {
+                        throw new ProgramException("{0}: Include-Dir: Path was not found! ({1})", Path.GetFileName(inFilePath), path);
+                    }
+
+                    // Check filter
+
+                    if (string.IsNullOrEmpty(filter))
+                    {
+                        throw new ProgramException("{0}: Include-Dir: Filter was null or empty!", Path.GetFileName(inFilePath));
+                    }
+
+                    // Searching and including file 
+
+                    List<string> foundFiles = Utils.SearchFiles(path, filter);
+
+                    foreach (string file in foundFiles)
+                    {
+                        if (Path.Equals(file, inFilePath))
                         {
-                            string path = childNode.InnerText;
-
-                            // Check path 
-                            if (string.IsNullOrEmpty(path))
-                            {
-                                throw new Exception("Include: Path was null or empty!");
-                            }
-
-                            path = ProcessPath(path, rootDir);
-
-                            if (!File.Exists(path))
-                            {
-                                throw new Exception(string.Format("Include: File was not found! '{0}'", path));
-                            }
-
-                            // Include
-                            ReadFile(path);
+                            throw new ProgramException("{0}: Include-Dir includes it self!", Path.GetFileName(inFilePath));
                         }
-                        break;
 
-                    case "Directory":
-                        {
-                            if (childNode.ChildNodes.Count == 0)
-                            {
-                                throw new Exception("Include: Directory has no child nodes!");
-                            }
-
-                            string path = ParseString(childNode, "Path", null);
-                            string filter = ParseString(childNode, "Filter", null);
-
-                            // Checking 
-                            if (string.IsNullOrEmpty(path))
-                            {
-                                throw new Exception("Include: Directory path was null or empty!");
-                            }
-
-                            if (string.IsNullOrEmpty(filter))
-                            {
-                                throw new Exception("Include: Filter was null or empty");
-                            }
-
-                            path = ProcessPath(path, rootDir);
-
-                            if (!Directory.Exists(path))
-                            {
-                                throw new Exception("Include: Directory not found!");
-                            }
-
-
-                            // Searching files and including
-                            List<string> foundFiles = SearchFiles(path, filter);
-
-                            foreach (string file in foundFiles)
-                            {
-                                ReadFile(file);
-                            }
-                            
-                        }
-                        break;
+                        ReadFile(file);
+                    }
                 }
+                else
+                {
+                    Log.WriteWarning("{0}: Unknown node({1})!", Path.GetFileName(inFilePath), node.Name);
+                }
+
             }
+        }
+
+        static void ProcessLibrary(XmlNode inIncludeLibrary, string inFilePath)
+        {
+
         }
     }
 }
